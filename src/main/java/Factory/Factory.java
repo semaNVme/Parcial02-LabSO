@@ -1,22 +1,13 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-package access;
+package Factory;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- *
- * @author valeb
- */
+
 public class Factory {
     private Map<String, IMessage> message;
 
-    /**
-     * Singleton
-     */
+   
     private static Factory instance;
 
     private Factory() {
@@ -26,11 +17,7 @@ public class Factory {
         message.put("push", new Push());
     }
 
-    /**
-     * Clase singleton
-     *
-     * @return
-     */
+    
     public static Factory getInstance() {
 
         if (instance == null) {
@@ -40,12 +27,6 @@ public class Factory {
 
     }
 
-    /**
-     * Método que crea una instancia concreta de la jerarquia IProductRepository
-     *
-     * @param type cadena que indica qué tipo de clase hija debe instanciar
-     * @return una clase hija de la abstracción IProductRepository
-     */
     public IMessage getMessage(String type) {
 
         IMessage result = null;
