@@ -11,11 +11,18 @@ import java.util.List;
  */
 public class NotificationManager implements NotificationSubject {
  
-    /** Lista de suscriptores registrados (módulo auditoría, estadísticas, UI…) */
+    private static NotificationManager instance;
     private final List<NotificationObserver> observers = new ArrayList<>();
- 
-    /** Último evento generado; lo leen los observadores al recibir update(). */
     private NotificationEvent lastEvent;
+
+    private NotificationManager() {}
+
+    public static NotificationManager getInstance() {
+        if (instance == null) {
+            instance = new NotificationManager();
+        }
+        return instance;
+    }
  
     // ── Métodos de suscripción ──────────────────────────────────────────────
  

@@ -1,5 +1,5 @@
 package Factory;
 
 public interface IMessage {
-    public void procesar(String mess);
+    public void procesar(Message msg);
 }

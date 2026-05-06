@@ -5,6 +5,7 @@ package Decorador;
  * @author valeb
  */
 import Factory.IMessage;
+import Factory.Message;
 
 public class ValidateMessage extends MessageDecorador {
 
@@ -13,12 +14,12 @@ public class ValidateMessage extends MessageDecorador {
     }
 
     @Override
-    public void procesar(String mess) {
-        if (mess == null || mess.trim().isEmpty()) {
+    public void procesar(Message msg) {
+        if (msg.getContenido() == null || msg.getContenido().trim().isEmpty()) {
             System.out.println("Validacion Fallida: El mensaje esta vacio.");
         } else {
             System.out.println("Validacion Exitosa: Mensaje valido.");
-            super.procesar(mess);
+            super.procesar(msg);
         }
     }
 }

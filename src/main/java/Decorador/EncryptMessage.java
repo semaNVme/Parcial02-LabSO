@@ -1,6 +1,7 @@
 package Decorador;
 
 import Factory.IMessage;
+import Factory.Message;
 
 public class EncryptMessage extends MessageDecorador{
     
@@ -8,9 +9,10 @@ public class EncryptMessage extends MessageDecorador{
         super(message);
     }
     
-    public void procesar(String mess){
-        mess=encrypt(mess);
-        message.procesar(mess);
+    public void procesar(Message msg){
+        String encrypted = encrypt(msg.getContenido());
+        msg.setContenido(encrypted);
+        message.procesar(msg);
     }
     
     public String encrypt(String mess) {

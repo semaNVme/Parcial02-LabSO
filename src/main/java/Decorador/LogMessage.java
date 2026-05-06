@@ -5,6 +5,7 @@ package Decorador;
  * @author valeb
  */
 import Factory.IMessage;
+import Factory.Message;
 
 public class LogMessage extends MessageDecorador {
 
@@ -13,8 +14,8 @@ public class LogMessage extends MessageDecorador {
     }
 
     @Override
-    public void procesar(String mess) {
-        System.out.println("Logging: Procesando mensaje -> " + mess);
-        super.procesar(mess);
+    public void procesar(Message msg) {
+        System.out.println("Logging: Procesando mensaje -> " + msg.getContenido());
+        super.procesar(msg);
     }
 }

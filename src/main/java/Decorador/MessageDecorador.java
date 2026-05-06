@@ -19,8 +19,8 @@ public class MessageDecorador implements IMessage{
         this.message = message;
     }
 
-    public void procesar(String mess){
-        message.procesar(mess);
+    public void procesar(Message msg){
+        message.procesar(msg);
     }
     
 }
