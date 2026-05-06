@@ -10,7 +10,6 @@ public interface NotificationObserver {
  
     /**
      * Método que el notificador invoca cuando ocurre un cambio de estado.
-     * @param event Evento con información contextual del cambio.
      */
     void update(NotificationEvent event);
 }

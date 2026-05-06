@@ -1,7 +1,4 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
+
 package Decorador;
 
 import Factory.Factory;
@@ -9,8 +6,9 @@ import Factory.IMessage;
 import Factory.Message;
 
 /**
- *
- * @author valeb
+ * PATRÓN DECORATOR: Esta es la clase base para los decoradores. 
+ * Permite añadir funcionalidades extra (encriptación, log, etc.) 
+ * a un objeto de tipo IMessage sin modificar su código original.
  */
 public class MessageDecorador implements IMessage{
     protected IMessage message;

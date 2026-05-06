@@ -4,6 +4,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 
+/**
+ * PATRÓN FACTORY: Esta clase se encarga de la creación de diferentes tipos 
+ * de estrategias de mensajería (Email, SMS, Push) centralizando la lógica 
+ * de instanciación en un solo lugar.
+ */
 public class Factory {
     private Map<String, IMessage> message;
 

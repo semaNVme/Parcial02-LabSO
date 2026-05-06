@@ -8,9 +8,6 @@ import java.util.List;
  * Módulo de Auditoría
  *
  * Reacciona a cada cambio de estado registrando una entrada de auditoría.
- * Principio de Responsabilidad Única (SRP): solo se ocupa de auditar.
- * Principio Abierto/Cerrado (OCP): se puede agregar o quitar del sistema
- * sin tocar el NotificationManager.
  */
 public class AuditModule implements NotificationObserver {
  
