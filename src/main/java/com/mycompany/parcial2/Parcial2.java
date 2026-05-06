@@ -11,8 +11,7 @@ import Views.Principal;
 public class Parcial2 {
 
     public static void main(String[] args) {
-        System.out.println("=== SISTEMA DE MENSAJERIA INTEGRADO (Factory + Decorator + Observer) ===");
-        System.out.println("Lanzando interfaz gráfica desde Views.Principal...");
-        Principal.main(args);
+        Principal view = new Principal();
+        view.setVisible(true);
     }
 }

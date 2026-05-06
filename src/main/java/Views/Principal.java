@@ -17,117 +17,76 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.swing.*;
 
-public class Principal extends javax.swing.JFrame {
+public class Principal extends javax.swing.JFrame implements NotificationObserver {
 
-    // Componentes personalizados
-    private JTextField txtId, txtRecipient, txtContent;
-    private JComboBox<String> comboType;
-    private JTextArea auditArea;
     private Map<String, JLabel> statLabels = new HashMap<>();
-    private int totalCount = 0;
-    private JLabel totalLabel;
 
     public Principal() {
         initComponents();
-        setupControlPanel();
-        setupAuditPanel();
-        setupStatisticsPanel();
+        initCustomLogic();
+    }
+    
+    private void initCustomLogic() {
+        // Inicializar mapeo de etiquetas para las estadísticas
+        statLabels.put("EMAIL", totalEmail);
+        statLabels.put("SMS", totalSMS);
+        statLabels.put("PUSH", totalPush);
         
-        // Registrar observadores
-        NotificationManager.getInstance().addObserver(new UIObserver());
+        // Inicializar etiquetas con 0
+        totalSMS.setText("0");
+        totalEmail.setText("0");
+        totalPush.setText("0");
+        
+        // Registrar esta vista como observador
+        NotificationManager.getInstance().addObserver(this);
+        
+        // Generar un ID inicial
+        txtId.setText("MSG-" + (int)(Math.random() * 1000));
+        setLocationRelativeTo(null);
     }
-
-    private void setupControlPanel() {
-        panelControl.setLayout(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        gbc.gridx = 0; gbc.gridy = 0; panelControl.add(new JLabel("ID:"), gbc);
-        txtId = new JTextField("MSG-" + (int)(Math.random() * 1000));
-        gbc.gridx = 1; panelControl.add(txtId, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 1; panelControl.add(new JLabel("Canal:"), gbc);
-        comboType = new JComboBox<>(new String[]{"email", "default", "push"});
-        gbc.gridx = 1; panelControl.add(comboType, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 2; panelControl.add(new JLabel("Dest:"), gbc);
-        txtRecipient = new JTextField("usuario@ejemplo.com");
-        gbc.gridx = 1; panelControl.add(txtRecipient, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 3; panelControl.add(new JLabel("Msg:"), gbc);
-        txtContent = new JTextField("Hola!");
-        gbc.gridx = 1; panelControl.add(txtContent, gbc);
-
-        JButton btnSend = new JButton("Enviar");
-        btnSend.setBackground(new Color(0, 153, 51));
-        btnSend.setForeground(Color.WHITE);
-        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
-        panelControl.add(btnSend, gbc);
-
-        btnSend.addActionListener(e -> sendMessage());
-    }
-
-    private void setupAuditPanel() {
-        panelAudit.setLayout(new BorderLayout());
-        auditArea = new JTextArea();
-        auditArea.setEditable(false);
-        auditArea.setFont(new Font("Monospaced", Font.PLAIN, 11));
-        panelAudit.add(new JScrollPane(auditArea), BorderLayout.CENTER);
-    }
-
-    private void setupStatisticsPanel() {
-        panelStatistics.setLayout(new GridLayout(5, 1, 5, 5));
-        totalLabel = new JLabel("Total: 0", SwingConstants.CENTER);
-        totalLabel.setFont(new Font("Arial", Font.BOLD, 12));
-        panelStatistics.add(totalLabel);
-
-        panelStatistics.add(createStatLabel("EMAIL"));
-        panelStatistics.add(createStatLabel("SMS"));
-        panelStatistics.add(createStatLabel("PUSH"));
-    }
-
-    private JPanel createStatLabel(String type) {
-        JPanel p = new JPanel(new BorderLayout());
-        JLabel label = new JLabel("0", SwingConstants.RIGHT);
-        label.setFont(new Font("Arial", Font.BOLD, 14));
-        p.add(new JLabel(type + ": "), BorderLayout.WEST);
-        p.add(label, BorderLayout.CENTER);
-        statLabels.put(type, label);
-        return p;
-    }
-
+    
     private void sendMessage() {
         String typeKey = (String) comboType.getSelectedItem();
+        // Mapeo de la llave del combo al label esperado por el observer
         String typeLabel = typeKey.equals("default") ? "SMS" : typeKey.toUpperCase();
 
         IMessage base = Factory.getInstance().getMessage(typeKey);
-        IMessage procesador = new ValidateMessage(new LogMessage(new EncryptMessage(new NotificationDecorador(base))));
+        // Cadena de decoradores: Validar -> Log -> Encriptar -> Notificar
+        IMessage procesador = new ValidateMessage(
+                                new LogMessage(
+                                    new EncryptMessage(
+                                        new NotificationDecorador(base)
+                                    )
+                                )
+                              );
 
         Message msg = new Message(txtId.getText(), typeLabel, txtRecipient.getText(), txtContent.getText());
         procesador.procesar(msg);
         
+        // Resetear campos
         txtId.setText("MSG-" + (int)(Math.random() * 1000));
         txtContent.setText("");
     }
 
-    // Clase interna para manejar las actualizaciones del Observer
-    private class UIObserver implements NotificationObserver {
-        @Override
-        public void update(NotificationEvent event) {
-            SwingUtilities.invokeLater(() -> {
-                // Actualizar Auditoría
-                auditArea.append(String.format("[%s] %s -> %s\n", event.getType(), event.getRecipient(), event.getStatus()));
-                
-                // Actualizar Estadísticas
-                totalCount++;
-                totalLabel.setText("Total: " + totalCount);
-                if (statLabels.containsKey(event.getType())) {
-                    JLabel lbl = statLabels.get(event.getType());
-                    lbl.setText(String.valueOf(Integer.parseInt(lbl.getText()) + 1));
+    @Override
+    public void update(NotificationEvent event) {
+        SwingUtilities.invokeLater(() -> {
+            String entry = String.format("[%s] [%s] %s -> %s\n", 
+                    event.getFormattedTimestamp(), event.getType(), event.getRecipient(), event.getStatus());
+            auditArea.append(entry);
+            auditArea.setCaretPosition(auditArea.getDocument().getLength());
+            
+            if (statLabels.containsKey(event.getType())) {
+                JLabel lbl = statLabels.get(event.getType());
+                try {
+                    String currentText = lbl.getText();
+                    int current = Integer.parseInt(currentText.equals(".") || currentText.isEmpty() ? "0" : currentText);
+                    lbl.setText(String.valueOf(current + 1));
+                } catch (NumberFormatException e) {
+                    lbl.setText("1");
                 }
-            });
-        }
+            }
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -135,49 +94,182 @@ public class Principal extends javax.swing.JFrame {
     private void initComponents() {
 
         panelControl = new javax.swing.JPanel();
+        lblid = new javax.swing.JLabel();
+        comboType = new javax.swing.JComboBox<>();
+        jLabel1 = new javax.swing.JLabel();
+        txtId = new javax.swing.JTextField();
+        jLabel2 = new javax.swing.JLabel();
+        txtRecipient = new javax.swing.JTextField();
+        jLabel3 = new javax.swing.JLabel();
+        txtContent = new javax.swing.JTextField();
+        btnSend = new javax.swing.JButton();
         panelAudit = new javax.swing.JPanel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        auditArea = new javax.swing.JTextArea();
+        jLabel4 = new javax.swing.JLabel();
         panelStatistics = new javax.swing.JPanel();
+        jLabel5 = new javax.swing.JLabel();
+        jLabel6 = new javax.swing.JLabel();
+        jLabel7 = new javax.swing.JLabel();
+        totalSMS = new javax.swing.JLabel();
+        totalEmail = new javax.swing.JLabel();
+        totalPush = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Dashboard de Mensajería");
 
-        panelControl.setBorder(javax.swing.BorderFactory.createTitledBorder("Envío"));
+        panelControl.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+
+        lblid.setText("ID:");
+
+        comboType.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "email", "push", "default" }));
+
+        jLabel1.setText("Destinatario:");
+
+        jLabel2.setText("Canal:");
+
+        jLabel3.setText("Msg:");
+
+        btnSend.setText("Enviar");
+        btnSend.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSendActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout panelControlLayout = new javax.swing.GroupLayout(panelControl);
         panelControl.setLayout(panelControlLayout);
         panelControlLayout.setHorizontalGroup(
             panelControlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 200, Short.MAX_VALUE)
+            .addGroup(panelControlLayout.createSequentialGroup()
+                .addGap(24, 24, 24)
+                .addGroup(panelControlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtId, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(comboType, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblid, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 84, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtRecipient, javax.swing.GroupLayout.DEFAULT_SIZE, 123, Short.MAX_VALUE)
+                    .addComponent(txtContent))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelControlLayout.createSequentialGroup()
+                .addContainerGap(52, Short.MAX_VALUE)
+                .addComponent(btnSend)
+                .addGap(50, 50, 50))
         );
         panelControlLayout.setVerticalGroup(
             panelControlLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelControlLayout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(lblid)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(txtId, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(30, 30, 30)
+                .addComponent(jLabel2)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(comboType, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(jLabel1)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(txtRecipient, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(jLabel3)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(txtContent, javax.swing.GroupLayout.PREFERRED_SIZE, 55, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(btnSend)
+                .addGap(42, 42, 42))
         );
 
-        panelAudit.setBorder(javax.swing.BorderFactory.createTitledBorder("Auditoría"));
+        panelAudit.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+
+        auditArea.setColumns(20);
+        auditArea.setRows(5);
+        jScrollPane1.setViewportView(auditArea);
+
+        jLabel4.setText("Auditoria:");
 
         javax.swing.GroupLayout panelAuditLayout = new javax.swing.GroupLayout(panelAudit);
         panelAudit.setLayout(panelAuditLayout);
         panelAuditLayout.setHorizontalGroup(
             panelAuditLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
+            .addGroup(panelAuditLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                .addContainerGap())
+            .addGroup(panelAuditLayout.createSequentialGroup()
+                .addGap(26, 26, 26)
+                .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 77, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(111, Short.MAX_VALUE))
         );
         panelAuditLayout.setVerticalGroup(
             panelAuditLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
+            .addGroup(panelAuditLayout.createSequentialGroup()
+                .addGap(18, 18, 18)
+                .addComponent(jLabel4)
+                .addGap(18, 18, 18)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 317, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(39, Short.MAX_VALUE))
         );
 
-        panelStatistics.setBorder(javax.swing.BorderFactory.createTitledBorder("Estadísticas"));
+        panelStatistics.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+
+        jLabel5.setText("SMS:");
+
+        jLabel6.setText("Email:");
+
+        jLabel7.setText("Push:");
+
+        totalSMS.setText(".");
+
+        totalEmail.setText(".");
+
+        totalPush.setText(".");
+
+        jLabel8.setText("Statistics:");
 
         javax.swing.GroupLayout panelStatisticsLayout = new javax.swing.GroupLayout(panelStatistics);
         panelStatistics.setLayout(panelStatisticsLayout);
         panelStatisticsLayout.setHorizontalGroup(
             panelStatisticsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 150, Short.MAX_VALUE)
+            .addGroup(panelStatisticsLayout.createSequentialGroup()
+                .addGap(15, 15, 15)
+                .addGroup(panelStatisticsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(panelStatisticsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addGroup(panelStatisticsLayout.createSequentialGroup()
+                            .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(60, 60, 60)
+                            .addComponent(totalSMS, javax.swing.GroupLayout.PREFERRED_SIZE, 69, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGroup(panelStatisticsLayout.createSequentialGroup()
+                            .addGroup(panelStatisticsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(50, 50, 50)
+                            .addGroup(panelStatisticsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(totalEmail, javax.swing.GroupLayout.PREFERRED_SIZE, 63, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(totalPush, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                    .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(28, Short.MAX_VALUE))
         );
         panelStatisticsLayout.setVerticalGroup(
             panelStatisticsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
+            .addGroup(panelStatisticsLayout.createSequentialGroup()
+                .addGap(20, 20, 20)
+                .addComponent(jLabel8)
+                .addGap(30, 30, 30)
+                .addGroup(panelStatisticsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel5)
+                    .addComponent(totalSMS))
+                .addGap(38, 38, 38)
+                .addGroup(panelStatisticsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel6)
+                    .addComponent(totalEmail))
+                .addGap(39, 39, 39)
+                .addGroup(panelStatisticsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel7)
+                    .addComponent(totalPush))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -200,22 +292,35 @@ public class Principal extends javax.swing.JFrame {
         );
 
         pack();
-        setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
-    public static void main(String args[]) {
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {}
+    private void btnSendActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSendActionPerformed
+        sendMessage();
+    }//GEN-LAST:event_btnSendActionPerformed
 
-        java.awt.EventQueue.invokeLater(() -> {
-            new Principal().setVisible(true);
-        });
-    }
-
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JTextArea auditArea;
+    private javax.swing.JButton btnSend;
+    private javax.swing.JComboBox<String> comboType;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JLabel lblid;
     private javax.swing.JPanel panelAudit;
     private javax.swing.JPanel panelControl;
     private javax.swing.JPanel panelStatistics;
+    private javax.swing.JLabel totalEmail;
+    private javax.swing.JLabel totalPush;
+    private javax.swing.JLabel totalSMS;
+    private javax.swing.JTextField txtContent;
+    private javax.swing.JTextField txtId;
+    private javax.swing.JTextField txtRecipient;
     // End of variables declaration//GEN-END:variables
 }
